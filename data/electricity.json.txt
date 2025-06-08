@@ -1,0 +1,59 @@
+{
+    "United States": {
+        "carbonIntensity": 386,
+        "renewableShare": 22.1,
+        "energyMix": {
+            "gas": 40.5,
+            "renewable": 22.1,
+            "nuclear": 19.7,
+            "coal": 17.7
+        },
+        "bounds": [[24.396308, -125.0], [49.384358, -66.93457]]
+    },
+    "United Kingdom": {
+        "carbonIntensity": 233,
+        "renewableShare": 43.1,
+        "energyMix": {
+            "renewable": 43.1,
+            "gas": 35.7,
+            "nuclear": 15.5,
+            "coal": 5.7
+        },
+        "bounds": [[49.9, -8.18], [60.84, 1.77]]
+    },
+    "Germany": {
+        "carbonIntensity": 311,
+        "renewableShare": 46.3,
+        "energyMix": {
+            "renewable": 46.3,
+            "gas": 16.0,
+            "nuclear": 12.6,
+            "coal": 25.1
+        },
+        "bounds": [[47.27, 5.87], [55.10, 15.04]]
+    },
+    "India": {
+        "carbonIntensity": 708,
+        "renewableShare": 20.1,
+        "energyMix": {
+            "coal": 70.3,
+            "renewable": 20.1,
+            "gas": 4.1,
+            "nuclear": 3.2,
+            "hydro": 2.3
+        },
+        "bounds": [[6.75, 68.03], [35.67, 97.40]]
+    },
+    "France": {
+        "carbonIntensity": 57,
+        "renewableShare": 19.1,
+        "energyMix": {
+            "nuclear": 67.1,
+            "renewable": 19.1,
+            "gas": 7.5,
+            "coal": 2.8,
+            "hydro": 3.5
+        },
+        "bounds": [[41.33, -5.14], [51.12, 9.56]]
+    }
+}

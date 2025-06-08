@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- other head content -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroMaps - Live Electricity Carbon Intensity</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow: hidden;
+        }
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .time-selector {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.05);
+        }
+
+        #map {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 300px;
+            bottom: 0;
+            background: #1a1a2e;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 60px;
+            right: 0;
+            width: 300px;
+            height: calc(100vh - 60px);
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .legend {
+            margin-bottom: 30px;
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            color: #00ff88;
+            font-size: 18px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .country-info {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .country-info h2 {
+            color: #00ccff;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info-label {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .carbon-intensity {
+            color: #ff6b6b;
+        }
+
+        .renewable-share {
+            color: #00ff88;
+        }
+
+        .energy-mix {
+            margin-top: 20px;
+        }
+
+        .energy-mix h4 {
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .energy-bar {
+            background: rgba(255, 255, 255, 0.1);
+            height: 25px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .energy-fill {
+            height: 100%;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            font-weight: bold;
+            transition: width 0.5s ease;
+        }
+
+        .solar { background: linear-gradient(90deg, #ffb347, #ff8c00); }
+        .wind { background: linear-gradient(90deg, #87ceeb, #4682b4); }
+        .hydro { background: linear-gradient(90deg, #20b2aa, #008b8b); }
+        .nuclear { background: linear-gradient(90deg, #dda0dd, #9932cc); }
+        .gas { background: linear-gradient(90deg, #f0e68c, #daa520); }
+        .coal { background: linear-gradient(90deg, #696969, #2f4f4f); }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #00ff88;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                right: 0;
+            }
+            
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                right: 0;
+                width: 100%;
+                height: 40%;
+                transform: translateY(calc(100% - 50px));
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.open {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- your HTML content -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+<body>
+
+
+    <div class="header">
+        <div class="logo">
+            <i class="fas fa-bolt"></i> ElectroMaps
+        </div>
+        <div class="controls">
+            <select class="time-selector" id="timeRange">
+                <option value="1h">Last Hour</option>
+                <option value="24h" selected>Last 24h</option>
+                <option value="72h">Last 72h</option>
+            </select>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="sidebar">
+        <div class="legend">
+            <h3><i class="fas fa-palette"></i> Carbon Intensity Scale</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #00ff88;"></div>
+                <span>0-100 gCO₂/kWh - Very Low</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #90EE90;"></div>
+                <span>100-200 gCO₂/kWh - Low</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFD700;"></div>
+                <span>200-400 gCO₂/kWh - Medium</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FF8C00;"></div>
+                <span>400-600 gCO₂/kWh - High</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FF6B6B;"></div>
+                <span>600+ gCO₂/kWh - Very High</span>
+            </div>
+        </div>
+
+        <div class="country-info" id="countryInfo">
+            <h2><i class="fas fa-globe"></i> Select a Country</h2>
+            <p style="color: #ccc; font-size: 14px;">Click on a country to view detailed electricity data</p>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Loading electricity data...</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Mock data for demonstration - replace with real API calls
+        const electricityData = {
+            'United States': {
+                carbonIntensity: 386,
+                renewableShare: 22.1,
+                energyMix: {
+                    gas: 40.5,
+                    renewable: 22.1,
+                    nuclear: 19.7,
+                    coal: 17.7
+                },
+                bounds: [[24.396308, -125.0], [49.384358, -66.93457]]
+            },
+            'United Kingdom': {
+                carbonIntensity: 233,
+                renewableShare: 43.1,
+                energyMix: {
+                    renewable: 43.1,
+                    gas: 35.7,
+                    nuclear: 15.5,
+                    coal: 5.7
+                },
+                bounds: [[49.9, -8.18], [60.84, 1.77]]
+            },
+            'Germany': {
+                carbonIntensity: 311,
+                renewableShare: 46.3,
+                energyMix: {
+                    renewable: 46.3,
+                    gas: 16.0,
+                    nuclear: 12.6,
+                    coal: 25.1
+                },
+                bounds: [[47.27, 5.87], [55.10, 15.04]]
+            },
+            'India': {
+                carbonIntensity: 708,
+                renewableShare: 20.1,
+                energyMix: {
+                    coal: 70.3,
+                    renewable: 20.1,
+                    gas: 4.1,
+                    nuclear: 3.2,
+                    hydro: 2.3
+                },
+                bounds: [[6.75, 68.03], [35.67, 97.40]]
+            },
+            'France': {
+                carbonIntensity: 57,
+                renewableShare: 19.1,
+                energyMix: {
+                    nuclear: 67.1,
+                    renewable: 19.1,
+                    gas: 7.5,
+                    coal: 2.8,
+                    hydro: 3.5
+                },
+                bounds: [[41.33, -5.14], [51.12, 9.56]]
+            }
+        };
+
+        let map;
+        let countryLayers = {};
+
+        function initMap() {
+            map = L.map('map', {
+                center: [40, 0],
+                zoom: 3,
+                zoomControl: false,
+                attributionControl: false
+            });
+
+            L.control.zoom({
+                position: 'bottomright'
+            }).addTo(map);
+
+            // Dark theme map
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© CartoDB'
+            }).addTo(map);
+
+            loadCountries();
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 2000);
+        }
+
+        function loadCountries() {
+            Object.keys(electricityData).forEach(country => {
+                const data = electricityData[country];
+                const bounds = data.bounds;
+                
+                // Create rectangle for country representation
+                const rectangle = L.rectangle(bounds, {
+                    color: getCarbonIntensityColor(data.carbonIntensity),
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.6,
+                    className: 'pulse'
+                });
+
+                rectangle.bindPopup(`
+                    <div style="color: black; font-weight: bold; text-align: center;">
+                        <h3>${country}</h3>
+                        <p>Carbon Intensity: ${data.carbonIntensity} gCO₂/kWh</p>
+                        <p>Renewable: ${data.renewableShare}%</p>
+                    </div>
+                `);
+
+                rectangle.on('click', () => showCountryDetails(country));
+                rectangle.addTo(map);
+                countryLayers[country] = rectangle;
+
+                // Add country label
+                L.marker([(bounds[0][0] + bounds[1][0]) / 2, (bounds[0][1] + bounds[1][1]) / 2], {
+                    icon: L.divIcon({
+                        className: 'country-label',
+                        html: `<div style="background: rgba(0,0,0,0.8); color: white; padding: 5px; border-radius: 5px; font-size: 12px; font-weight: bold;">${country}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 10]
+                    })
+                }).addTo(map);
+            });
+        }
+
+        function getCarbonIntensityColor(intensity) {
+            if (intensity < 100) return '#00ff88';
+            if (intensity < 200) return '#90EE90';
+            if (intensity < 400) return '#FFD700';
+            if (intensity < 600) return '#FF8C00';
+            return '#FF6B6B';
+        }
+
+        function showCountryDetails(country) {
+            const data = electricityData[country];
+            const infoDiv = document.getElementById('countryInfo');
+            
+            let energyMixHtml = '';
+            Object.entries(data.energyMix).forEach(([source, percentage]) => {
+                energyMixHtml += `
+                    <div class="energy-bar">
+                        <div class="energy-fill ${source.toLowerCase()}" style="width: ${percentage}%">
+                            ${source.charAt(0).toUpperCase() + source.slice(1)}: ${percentage}%
+                        </div>
+                    </div>
+                `;
+            });
+
+            infoDiv.innerHTML = `
+                <h2><i class="fas fa-flag"></i> ${country}</h2>
+                <div class="info-item">
+                    <span class="info-label">Carbon Intensity</span>
+                    <span class="info-value carbon-intensity">${data.carbonIntensity} gCO₂/kWh</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Renewable Share</span>
+                    <span class="info-value renewable-share">${data.renewableShare}%</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Last Updated</span>
+                    <span class="info-value">${new Date().toLocaleTimeString()}</span>
+                </div>
+                <div class="energy-mix">
+                    <h4><i class="fas fa-chart-pie"></i> Energy Mix</h4>
+                    ${energyMixHtml}
+                </div>
+            `;
+
+            // Zoom to country
+            map.fitBounds(data.bounds, { padding: [20, 20] });
+        }
+
+        function refreshData() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.innerHTML = '<i class="fas fa-spin fa-sync-alt"></i> Refreshing...';
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Update with slightly modified values to show refresh
+                Object.keys(electricityData).forEach(country => {
+                    const data = electricityData[country];
+                    const variation = (Math.random() - 0.5) * 20;
+                    data.carbonIntensity = Math.max(0, Math.round(data.carbonIntensity + variation));
+                    
+                    // Update map colors
+                    countryLayers[country].setStyle({
+                        color: getCarbonIntensityColor(data.carbonIntensity)
+                    });
+                });
+                
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                
+                // Show notification
+                const notification = document.createElement('div');
+                notification.innerHTML = 'Data refreshed successfully!';
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 80px;
+                    right: 20px;
+                    background: #00ff88;
+                    color: black;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    font-weight: bold;
+                    z-index: 1001;
+                    animation: slideIn 0.3s ease;
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }, 1500);
+        }
+
+        // Initialize map when page loads
+        window.onload = initMap;
+
+        // Handle mobile sidebar
+        if (window.innerWidth <= 768) {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+        }
+    </script>
+</body>
+</html>
