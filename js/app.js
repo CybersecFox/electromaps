@@ -15,3 +15,17 @@ const electricityData = {
 };
 
 // All your functions here...
+async function fetchRealData(country) {
+    const apiUrls = {
+        'UK': 'https://api.carbonintensity.org.uk/intensity',
+        'US': 'https://api.eia.gov/v2/electricity/rto/region-data'
+    };
+    
+    try {
+        const response = await fetch(apiUrls[country]);
+        return await response.json();
+    } catch (error) {
+        console.error('API Error:', error);
+        return null;
+    }
+}
